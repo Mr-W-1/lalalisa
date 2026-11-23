@@ -29,6 +29,13 @@ const SECTIONS = [
 
 // 24 High-Budget K-Pop Broadcast Shots (22 strictly stage-focused + 2 Fan-POV crowd shots)
 // [pos, fov, targetY, dutchDeg, orbitRad, pushZ, kind]
+const DIFFICULTY = {
+  easy: { label: 'EASY', good: 0.28, perfect: 0.14, miss: 0.38, scale: 1 },
+  normal: { label: 'NORMAL', good: 0.22, perfect: 0.11, miss: 0.30, scale: 1.5 },
+  hard: { label: 'HARD', good: 0.16, perfect: 0.075, miss: 0.22, scale: 2 },
+};
+export { DIFFICULTY };
+
 const SHOTS = [
   [[ 0.00, 2.15,  8.60], 42, 1.25,  0.0,  0.14, -1.20, 'low_push'],
   [[ 3.45, 2.85,  7.65], 40, 1.12, -5.5,  0.34, -0.55, 'whip'],
@@ -77,7 +84,8 @@ class LaLaLisaGame {
     this.hits = 0;
     this.perfect = 0;
     this.misses = 0;
-    this.maxMisses = 5;
+    this.difficulty = 'normal';
+    this.burstQueue = [];
     this.failed = false;
     this.watchOnly = false;
     this.activeHolds = [null, null, null, null];
@@ -330,7 +338,10 @@ class LaLaLisaGame {
   }
 
   handleAction(id) {
-    if (id === 'sound') {
+    if (id === 'difficulty') {
+      const order = ['easy', 'normal', 'hard'];
+      this.difficulty = order[(order.indexOf(this.difficulty) + 1) % order.length];
+    } else if (id === 'sound') {
       this.sound.setMuted(!this.sound.muted);
     } else if (id === 'song_len') {
       this.fullSong = !this.fullSong;
@@ -349,6 +360,9 @@ class LaLaLisaGame {
       this.manualShot = (this.manualShot + 1) % SHOTS.length;
     } else if (id === 'return' && (this.mode === 'dance' || this.mode === 'result')) {
       this._transition('YAOWARAT', () => this._enterStreet(true));
+    } else if (id === 'song' && this.mode === 'title') {
+      this.watchOnly = false;
+      this._transition('ON SET', () => this._enterStage());
     } else if (id === 'play') {
       if (this.mode === 'title') {
         this.sound.startCity();
@@ -437,7 +451,8 @@ class LaLaLisaGame {
 
   hitLane(lane) {
     if (this.mode !== 'dance' || this.count > 0 || this.watchOnly) return;
-    let bestNote = null, bestErr = 0.205;
+    const D = DIFFICULTY[this.difficulty];
+    let bestNote = null, bestErr = D.good;
     for (const n of this.notes) {
       if (n.lane === lane && !n.done && !n.holding) {
         const err = Math.abs(n.time - this.takeTime);
@@ -445,7 +460,7 @@ class LaLaLisaGame {
       }
     }
     if (!bestNote) return;
-    const exact = bestErr < 0.098;
+    const exact = bestErr < D.perfect;
     if (bestNote.hold > 0) {
       // Press-and-Hold beat started!
       bestNote.holding = true;
@@ -462,13 +477,15 @@ class LaLaLisaGame {
     this.combo++;
     this.best = Math.max(this.best, this.combo);
     if (exact) this.perfect++;
-    this.score += (exact ? 100 : 60) + Math.min(this.combo - 1, 20) * 5;
+    this.score += this._points(exact ? 1000 : 600);
     this.flash[lane] = 1.0;
     this.camShake = Math.max(this.camShake, exact ? 0.34 : 0.16);
     this.feedback = exact ? 'PERFECT' : 'GOOD';
     this.feedbackAge = 0;
+    this._celebrate(lane, exact ? 'perfect' : 'good');
     if (this.combo % 7 === 0) this.sound.playCheer();
-    if (this.combo % 10 === 0) { this.camShake = Math.max(this.camShake, 0.62); this.stage.triggerPyro(); }
+    if (this.combo % 10 === 0) {
+      this._celebrate(lane, 'combo'); this.camShake = Math.max(this.camShake, 0.62); this.stage.triggerPyro(); }
   }
 
   releaseLane(lane) {
@@ -485,20 +502,37 @@ class LaLaLisaGame {
       this.combo++;
       this.best = Math.max(this.best, this.combo);
       if (note.exactStart) this.perfect++;
-      this.score += 140 + Math.min(this.combo - 1, 20) * 6;
+      this.score += this._points(1500);
       this.flash[lane] = 1.0;
       this.feedback = 'PERFECT';
+      this._celebrate(lane, 'perfect');
       this.feedbackAge = 0;
     } else if (progress >= 0.42) {
       this.hits++;
       this.combo++;
       this.best = Math.max(this.best, this.combo);
-      this.score += 80;
+      this.score += this._points(800);
       this.feedback = 'GOOD';
+      this._celebrate(lane, 'good');
       this.feedbackAge = 0;
     } else {
       this._registerMiss();
     }
+  }
+
+  // Combo multiplier grows x1 -> x4 every 10 hits, scaled by difficulty.
+  _points(base) {
+    return Math.round(base * this.multiplier() * DIFFICULTY[this.difficulty].scale);
+  }
+
+  multiplier() {
+    return Math.min(4, 1 + Math.floor(this.combo / 10));
+  }
+
+  _celebrate(lane, kind) {
+    if (this.burstQueue.length < 12) this.burstQueue.push({ lane, kind });
+    const pattern = kind === 'combo' ? [20, 40, 20, 40, 40] : kind === 'perfect' ? 14 : kind === 'good' ? 8 : 0;
+    if (pattern) navigator.vibrate?.(pattern);
   }
 
   _registerMiss() {
@@ -507,12 +541,8 @@ class LaLaLisaGame {
     this.misses++;
     this.feedback = 'MISS';
     this.feedbackAge = 0;
-    if (this.misses >= this.maxMisses) {
-      this.failed = true;
-      this.sound.stopStage();
-      this.videoEl.pause();
-      this.mode = 'result';
-    }
+    navigator.vibrate?.(35);
+    // Like Magic Piano: misses only break the combo; the song always plays through.
   }
 
   _updateExplore(delta) {
@@ -603,7 +633,7 @@ class LaLaLisaGame {
         if (!this.videoEl.paused && Math.abs(this.videoEl.currentTime - this.takeTime) > 0.35) {
           try { this.videoEl.currentTime = this.takeTime % Math.max(1, this.videoEl.duration || 186); } catch {}
         }
-        // Tick active Press-and-Hold sustain beats + check missed notes (5 misses = fail in Play mode!)
+        // Tick active Press-and-Hold sustain beats + check missed notes
         if (!this.watchOnly) {
           for (let lane = 0; lane < 4; lane++) {
             const hn = this.activeHolds[lane];
@@ -617,16 +647,17 @@ class LaLaLisaGame {
                 this.combo++;
                 this.best = Math.max(this.best, this.combo);
                 this.perfect++;
-                this.score += 160 + Math.min(this.combo - 1, 20) * 6;
+                this.score += this._points(1600);
                 this.flash[lane] = 1.0;
                 this.camShake = Math.max(this.camShake, 0.36);
                 this.feedback = 'PERFECT';
+                this._celebrate(lane, 'perfect');
                 this.feedbackAge = 0;
               }
             }
           }
           for (const n of this.notes) {
-            if (!n.done && !n.holding && this.takeTime - n.time > 0.205) {
+            if (!n.done && !n.holding && this.takeTime - n.time > DIFFICULTY[this.difficulty].miss) {
               n.done = true;
               this._registerMiss();
               if (this.failed) break;

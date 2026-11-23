@@ -44,6 +44,7 @@ export class GameHUD {
     this.camDrag = { dx: 0, dy: 0 };
     this.laneTouches = new Map();
     this.touchPulse = [0, 0, 0, 0];
+    this.glitter = [];
 
     this._bindEvents();
   }
@@ -199,6 +200,7 @@ export class GameHUD {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, vw, vh);
     this.buttons = [];
+    this._dt = Math.min(0.05, delta);
     for (let i = 0; i < 4; i++) this.touchPulse[i] = Math.max(0, this.touchPulse[i] - delta * 5.0);
 
     const safe = this._safeInsets();
@@ -255,6 +257,7 @@ export class GameHUD {
     ctx.font = '500 16px -apple-system, system-ui, sans-serif';
     ctx.fillText('Find your stage in Yaowarat.', x + 2, foot - 68);
     this._btn('play', 'ENTER BANGKOK', x, foot - 48, 196, 48, true);
+    this._btn('song', 'PLAY SONG', x + 206, foot - 48, 130, 48);
   }
 
   _drawExplore(vw, vh, safe, portrait) {
@@ -278,7 +281,8 @@ export class GameHUD {
 
     this._btn('sound', g.sound.muted ? 'SOUND OFF' : 'SOUND ON', vw - safe.right - m - 102, tly, 102, 42);
     this._btn('song_len', g.fullSong ? 'FULL SONG · 3:04' : 'QUICK TAKE · 0:21', vw - safe.right - m - 148, tly + 48, 148, 38);
-    this._btn('watch_only', g.watchOnly ? 'WATCH ONLY · ON' : 'WATCH SHOW', vw - safe.right - m - 148, tly + 92, 148, 36, g.watchOnly);
+    this._btn('difficulty', `LEVEL · ${g.difficulty.toUpperCase()}`, vw - safe.right - m - 148, tly + 92, 148, 36);
+    this._btn('watch_only', g.watchOnly ? 'WATCH ONLY · ON' : 'WATCH SHOW', vw - safe.right - m - 148, tly + 134, 148, 36, g.watchOnly);
 
     // Virtual Thumbstick
     const bottom = vh - safe.bottom - m;
@@ -332,18 +336,13 @@ export class GameHUD {
       ctx.textAlign = 'right';
       ctx.fillStyle = IVORY;
       ctx.font = '800 21px -apple-system, system-ui, sans-serif';
-      ctx.fillText(String(g.score).padStart(5, '0'), rx - 12, tly + 24);
+      ctx.fillText(String(g.score).padStart(6, '0'), rx - 12, tly + 24);
       ctx.fillStyle = g.combo >= 15 ? JEWEL[3] : PINK;
       ctx.font = '700 11px -apple-system, system-ui, sans-serif';
-      ctx.fillText(`${g.combo}× COMBO`, rx - 12, tly + 40);
-      // 5-Miss Life Hearts (lose 1 per miss; 5 misses = Show Stopped!)
-      const livesLeft = Math.max(0, g.maxMisses - g.misses);
-      for (let h = 0; h < g.maxMisses; h++) {
-        const alive = h < livesLeft;
-        ctx.fillStyle = alive ? '#ff5498' : 'rgba(255, 220, 240, 0.18)';
-        ctx.font = '700 12px -apple-system, system-ui, sans-serif';
-        ctx.fillText('♥', rx - 12 - (g.maxMisses - 1 - h) * 15, tly + 57);
-      }
+      ctx.fillText(`${g.combo}× COMBO  ·  x${g.multiplier()}`, rx - 12, tly + 40);
+      ctx.fillStyle = 'rgba(255, 220, 240, 0.6)';
+      ctx.font = '700 11px -apple-system, system-ui, sans-serif';
+      ctx.fillText(`${g.misses} MISSED`, rx - 12, tly + 57);
     }
 
     this._btn('return', 'EXIT', tlx, tly + 66, 56, 38);
@@ -370,7 +369,7 @@ export class GameHUD {
     const gap = 10;
     const spacing = (width + gap) / 4;
     const x0 = (vw - width) * 0.5;
-    const radius = portrait ? 31 : 26;
+    const radius = portrait ? 36 : 30;
     const bottom = vh - safe.bottom - (portrait ? 56 : 30);
     const lineY = bottom - radius;
     const railH = Math.min(portrait ? 168 : 112, vh * 0.28);
@@ -443,7 +442,8 @@ export class GameHUD {
 
       const coreR = 4.6 + glow * 3.6 + Math.sin(tNow * 4.0 + lane * 1.4) * 0.8;
       drawStar(ctx, cx, cy, coreR, '#fff4fb', 0.58 + glow * 0.42);
-      this.laneTargets[lane] = { x: cx - radius - 8, y: cy - radius - 14, w: (radius + 8) * 2, h: (radius + 14) * 2 };
+      // Whole lane column (rail to screen bottom) is the touch zone, so any finger-sized tap lands.
+      this.laneTargets[lane] = { x: x0 + lane * spacing - gap * 0.5, y: railTop, w: spacing, h: vh - railTop };
     }
 
     // Falling Translucent Magic-Piano Starlight Orbs + Synced Press-and-Hold Sustain Ribbons!
@@ -533,6 +533,33 @@ export class GameHUD {
       }
     }
 
+    // Glitter bursts: translucent stars that explode outward and drift down
+    for (const ev of g.burstQueue.splice(0)) {
+      const big = ev.kind === 'combo';
+      const n = big ? 46 : ev.kind === 'perfect' ? 24 : 12;
+      for (let i = 0; i < n; i++) {
+        const ang = Math.random() * Math.PI * 2;
+        const spd = (big ? 160 : 90) + Math.random() * (big ? 320 : 220);
+        const ox = big ? x0 + Math.random() * width : x0 + ev.lane * spacing + (spacing - gap) * 0.5;
+        this.glitter.push({
+          x: ox, y: lineY, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 90,
+          r: 2.5 + Math.random() * (big ? 6 : 4.5), life: 0.8 + Math.random() * 0.7, age: 0,
+          color: Math.random() < 0.45 ? '#fff8fc' : JEWEL[big ? Math.floor(Math.random() * 4) : ev.lane],
+        });
+      }
+    }
+    if (this.glitter.length > 400) this.glitter.splice(0, this.glitter.length - 400);
+    this.glitter = this.glitter.filter((p) => p.age < p.life);
+    for (const p of this.glitter) {
+      p.age += this._dt;
+      p.vy += 260 * this._dt;
+      p.vx *= 0.985;
+      p.x += p.vx * this._dt;
+      p.y += p.vy * this._dt;
+      const k = 1 - p.age / p.life;
+      drawStar(ctx, p.x, p.y, p.r * (0.5 + k * 0.7), p.color, k * (0.55 + 0.45 * Math.abs(Math.sin(p.age * 22 + p.x))));
+    }
+
     // Countdown or PERFECT/GOOD badge
     if (g.count > 0) {
       ctx.fillStyle = IVORY;
@@ -568,16 +595,14 @@ export class GameHUD {
     const x = safe.left + (portrait ? 22 : 68);
     const y = vh - safe.bottom - (portrait ? 225 : 210);
     const acc = g.hits / Math.max(1, g.notes.length);
-    const title = g.failed
-      ? 'Show Stopped'
-      : g.watchOnly
+    const title = g.watchOnly
         ? 'Encore Complete'
         : (acc >= 0.9 ? 'Showstopper' : acc >= 0.65 ? 'Crowd favorite' : 'One more take');
 
     ctx.textAlign = 'left';
-    ctx.fillStyle = g.failed ? '#ff4a6e' : PINK;
+    ctx.fillStyle = PINK;
     ctx.font = '700 12px -apple-system, system-ui, sans-serif';
-    ctx.fillText(g.failed ? 'DIVA  /  5 MISSED BEATS' : (g.watchOnly ? 'DIVA  /  LIVE PERFORMANCE' : 'DIVA  /  TAKE COMPLETE'), x, y);
+    ctx.fillText(g.watchOnly ? 'DIVA  /  LIVE PERFORMANCE' : `DIVA  /  ${g.difficulty.toUpperCase()}`, x, y);
     ctx.fillStyle = IVORY;
     ctx.font = `800 ${portrait ? 38 : 56}px -apple-system, system-ui, sans-serif`;
     ctx.fillText(title, x, y + 46);
@@ -585,9 +610,9 @@ export class GameHUD {
     ctx.fillText(g.watchOnly ? 'Hands-free K-pop broadcast mode' : `${g.score} points  ·  ${g.hits} of ${g.notes.length} cues`, x, y + 78);
     ctx.fillStyle = MUTED;
     ctx.font = '500 14px -apple-system, system-ui, sans-serif';
-    ctx.fillText(g.failed ? `Missed ${g.misses} beats  ·  Best combo ${g.best}×` : `${g.perfect} perfect  ·  Best combo ${g.best}×`, x, y + 102);
+    ctx.fillText(`${g.perfect} perfect  ·  ${g.misses} missed  ·  Best combo ${g.best}×`, x, y + 102);
 
-    this._btn('play', g.failed ? 'TRY AGAIN' : 'SHOOT AGAIN', x, y + 122, 136, 46, true);
+    this._btn('play', 'SHOOT AGAIN', x, y + 122, 136, 46, true);
     this._btn('watch_only', 'WATCH ONLY', x + 144, y + 122, 126, 46);
     this._btn('return', 'BACK TO BANGKOK', x, y + 176, 174, 42);
   }
