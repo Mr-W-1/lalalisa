@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#140c1e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>LaLaLisa · Bangkok After Dark</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      width: 100%; height: 100%; margin: 0; overflow: hidden;
+      overscroll-behavior: none; background: #140c1e;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+      color: #fff3f8; touch-action: none; user-select: none; -webkit-user-select: none;
+    }
+    #gl, #hud {
+      position: fixed; inset: 0; width: 100%; height: 100%; display: block;
+    }
+    #hud { pointer-events: auto; z-index: 2; }
+    #safe {
+      position: fixed; pointer-events: none; visibility: hidden;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+    #stage-video {
+      position: fixed; width: 1px; height: 1px; opacity: 0.001; pointer-events: none;
+    }
+    #boot-screen {
+      position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px; padding: 28px; text-align: center;
+      background: radial-gradient(ellipse at 50% 45%, #371b42 0%, #140c1e 72%);
+      transition: opacity 0.45s ease;
+    }
+    #boot-screen.hidden { opacity: 0; pointer-events: none; }
+    .kicker { font-size: 11px; letter-spacing: 0.34em; color: #ff9fd0; text-transform: uppercase; }
+    .brand { font-size: clamp(3.2rem, 13vw, 5.2rem); font-weight: 800; letter-spacing: -0.05em; line-height: 1; margin: 0; }
+    .brand span { color: #ff6fb8; }
+    .sub { font-size: 15px; color: #e2cce0; margin: 0 0 8px; }
+    .bar-wrap { width: min(240px, 66vw); height: 5px; border-radius: 99px; background: rgba(255,255,255,0.14); overflow: hidden; }
+    .bar-fill { width: 8%; height: 100%; background: linear-gradient(90deg, #ff56aa, #46e8ff); transition: width 0.2s ease; }
+    #boot-status { font-size: 13px; color: #d8bfd6; min-height: 18px; }
+    #boot-btn {
+      margin-top: 6px; padding: 14px 30px; border-radius: 999px; border: 1px solid #ffd2ea;
+      background: linear-gradient(135deg, #ff7bc0, #ff4ca2); color: #1a0c20;
+      font-weight: 800; font-size: 15px; letter-spacing: 0.06em; cursor: pointer;
+      box-shadow: 0 8px 28px rgba(255, 76, 162, 0.45);
+    }
+    #boot-btn[hidden] { display: none; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./three/three.module.min.js",
+        "three/addons/": "./three/addons/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <canvas id="hud"></canvas>
+  <div id="safe" aria-hidden="true"></div>
+  <video id="stage-video" src="./vidback_web.mp4" playsinline webkit-playsinline muted loop preload="auto" crossorigin="anonymous"></video>
+  <div id="boot-screen">
+    <div class="kicker">Bangkok · After Dark</div>
+    <h1 class="brand">LaLa<span>Lisa</span></h1>
+    <p class="sub">Native WebGL2 · Full PC Assets</p>
+    <div class="bar-wrap"><div class="bar-fill" id="boot-bar"></div></div>
+    <div id="boot-status">Loading Yaowarat…</div>
+    <button id="boot-btn" type="button" hidden>ENTER BANGKOK</button>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
