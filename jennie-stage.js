@@ -278,10 +278,11 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
 
   // 5. 6 Shirtless Male Backup Dancers (pocket-to-arm mesh bridge surgically cleaned!)
   const maleOffsets = [
-    new THREE.Vector3(-1.55, 0, 4.05), new THREE.Vector3( 1.55, 0, 4.05),
-    new THREE.Vector3(-3.00, 0, 2.75), new THREE.Vector3( 3.00, 0, 2.75),
+    new THREE.Vector3(-2.15, 0, 4.10), new THREE.Vector3( 2.15, 0, 4.10),
+    new THREE.Vector3(-3.35, 0, 2.75), new THREE.Vector3( 3.35, 0, 2.75),
     new THREE.Vector3(-1.95, 0, 1.45), new THREE.Vector3( 1.95, 0, 1.45),
   ];
+  const maleAltClips = ['Jennie_Groove', 'Jennie_Rap', 'Jennie_Drop', 'Jennie_Verse', 'Jennie_Climax', 'Jennie_Chorus'];
   const maleDancers = [];
   if (maleDancerG) {
     for (let i = 0; i < 6; i++) {
@@ -304,23 +305,27 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
       for (const clip of maleDancerG.animations) actions[clip.name] = mixer.clipAction(clip);
       maleDancers.push({
         node, mixer, actions, activeClip: '',
-        basePos: maleOffsets[i], offset: [0.0, 0.22, 0.44, 0.66, 0.30, 0.82][i],
+        basePos: maleOffsets[i],
+        offset: [0.0, 0.35, 0.72, 1.08, 0.50, 1.40][i],
+        altClip: maleAltClips[i],
+        speed: [1.0, 0.95, 1.06, 0.96, 1.04, 0.93][i],
       });
     }
   }
 
-  // 6. 6 Female Backup Dancers entering mid-show (at 36s heavy bass drop / 9s quick take!)
+  // 6. 6 Female Backup Dancers entering right on DROP 1 (14s Full Song / 5s Quick Take) — front & center with Jennie!
   const femaleOffsets = [
-    new THREE.Vector3(-2.45, 0, 4.55), new THREE.Vector3( 2.45, 0, 4.55),
-    new THREE.Vector3(-4.15, 0, 3.35), new THREE.Vector3( 4.15, 0, 3.35),
-    new THREE.Vector3(-0.95, 0, 2.25), new THREE.Vector3( 0.95, 0, 2.25),
+    new THREE.Vector3(-1.28, 0, 3.65), new THREE.Vector3( 1.28, 0, 3.65),
+    new THREE.Vector3(-2.75, 0, 3.25), new THREE.Vector3( 2.75, 0, 3.25),
+    new THREE.Vector3(-0.95, 0, 2.05), new THREE.Vector3( 0.95, 0, 2.05),
   ];
+  const femaleAltClips = ['Jennie_Chorus', 'Jennie_Verse', 'Jennie_Climax', 'Jennie_Groove', 'Jennie_Drop', 'Jennie_Rap'];
   const femaleDancers = [];
   const beamGeo = new THREE.CylinderGeometry(0.40, 0.52, 6.8, 16, 1, true);
   let femaleCrewBeamed = false;
 
   if (femaleDancerG) {
-    const outfitTints = [0x8c1420, 0x380c14, 0xa82028, 0x260910, 0x9c1824, 0x421018];
+    const outfitTints = [0x9e1824, 0x380c14, 0xb8222a, 0x260910, 0xa81c28, 0x46101a];
     for (let i = 0; i < 6; i++) {
       const node = SkeletonUtils.clone(femaleDancerG.scene);
       node.position.set(femaleOffsets[i].x, JENNIE_STAGE_Y, femaleOffsets[i].z);
@@ -357,7 +362,10 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
 
       femaleDancers.push({
         node, mixer, actions, activeClip: '', beam, bmat,
-        basePos: femaleOffsets[i], offset: [0.10, 0.32, 0.54, 0.76, 0.18, 0.62][i],
+        basePos: femaleOffsets[i],
+        offset: [0.18, 0.52, 0.88, 1.24, 0.32, 0.96][i],
+        altClip: femaleAltClips[i],
+        speed: [1.03, 0.96, 1.05, 0.94, 1.02, 0.97][i],
       });
     }
   }
@@ -681,19 +689,20 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
   }
 
   function stepCrewMember(d, clipName, localT, inSync, takeTime, idx, spread) {
-    const act = d.actions[clipName] || d.actions['Jennie_Chorus'] || Object.values(d.actions)[0];
+    const want = inSync ? clipName : (d.altClip || clipName);
+    const act = d.actions[want] || d.actions['Jennie_Chorus'] || Object.values(d.actions)[0];
     if (act) {
-      if (d.activeClip !== clipName) {
+      if (d.activeClip !== want) {
         for (const a of Object.values(d.actions)) a.stop();
         act.reset().play();
-        d.activeClip = clipName;
+        d.activeClip = want;
       }
       const len = Math.max(1.0, act.getClip().duration - 0.05);
-      const seekT = inSync ? (localT % len) : ((localT + d.offset) % len);
+      const seekT = inSync ? (localT % len) : ((localT * (d.speed || 1.0) + d.offset) % len);
       d.mixer.setTime(Math.max(0, seekT));
     }
     d.node.position.set(d.basePos.x * spread, JENNIE_STAGE_Y, d.basePos.z);
-    d.node.rotation.y = inSync ? 0 : Math.sin(takeTime * 0.9 + idx * 1.4) * 0.22;
+    d.node.rotation.y = inSync ? 0 : Math.sin(takeTime * 0.95 + idx * 1.4) * 0.28;
   }
 
   function updateShow(delta, takeTime, fullSong, clipName, localT, pulse, intensity) {
@@ -716,7 +725,8 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
       jennieNode.updateMatrixWorld(true);
     }
 
-    const inSync = (intensity >= 1.10 || clipName === 'Jennie_Intro' || clipName === 'Jennie_Outro');
+    // Tight K-pop unison on Choruses, Climax, Intro & Outro; independent freestyle/counter-choreo during Drop, Groove, Verse & Rap!
+    const inSync = (clipName === 'Jennie_Chorus' || clipName === 'Jennie_Climax' || clipName === 'Jennie_Intro' || clipName === 'Jennie_Outro');
     const spread = 1.0 + Math.max(0, intensity - 0.85) * 0.15;
 
     // 2. Update 6 Shirtless Male Backup Dancers
@@ -725,8 +735,8 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
       stepCrewMember(maleDancers[i], clipName, localT, inSync, takeTime, i, spread);
     }
 
-    // 3. Female Backup Dancers enter mid-show (at 36.0s bass groove drop / 8.5s quick take!)
-    const femaleStart = fullSong ? 36.0 : 8.5;
+    // 3. Female Backup Dancers beam onto stage right on DROP 1 (14.0s Full Song / 5.0s Quick Take!)
+    const femaleStart = fullSong ? 14.0 : 5.0;
     if (takeTime >= femaleStart) {
       if (!femaleCrewBeamed) { femaleCrewBeamed = true; triggerPyro(); }
       const el = takeTime - femaleStart;
