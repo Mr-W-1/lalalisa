@@ -9,7 +9,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { SoundEngine } from './audio.js';
 import { buildYaowaratStreet, clampWalkPosition, isCameraClear, VENUE_POS } from './street.js';
 import { buildDivaStage, PODIUM_CENTER } from './stage.js';
-import { GameHUD } from './hud.js';
+import { GameHUD } from './hud.js?v=2';
 
 const BEAT = 60.0 / 93.96;
 const FIRST_CUE = 0.624 + BEAT * 4.0;
