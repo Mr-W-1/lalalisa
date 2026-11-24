@@ -25,7 +25,7 @@
       position: fixed; pointer-events: none; visibility: hidden;
       padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
     }
-    #stage-video {
+    #stage-video, #jennie-video {
       position: fixed; width: 1px; height: 1px; opacity: 0.001; pointer-events: none;
     }
     #boot-screen {
@@ -64,6 +64,7 @@
   <canvas id="hud"></canvas>
   <div id="safe" aria-hidden="true"></div>
   <video id="stage-video" src="./vidback_web.mp4" playsinline webkit-playsinline muted loop preload="auto" crossorigin="anonymous"></video>
+  <video id="jennie-video" src="./jennie_vidback_web.mp4" playsinline webkit-playsinline muted loop preload="auto" crossorigin="anonymous"></video>
   <div id="boot-screen">
     <div class="kicker">Bangkok · After Dark</div>
     <h1 class="brand">LaLa<span>Lisa</span></h1>
@@ -72,6 +73,6 @@
     <div id="boot-status">Loading Yaowarat…</div>
     <button id="boot-btn" type="button" hidden>ENTER BANGKOK</button>
   </div>
-  <script type="module" src="./main.js"></script>
+  <script type="module" src="./main.js?v=8"></script>
 </body>
 </html>

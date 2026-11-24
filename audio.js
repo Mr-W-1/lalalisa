@@ -14,8 +14,10 @@ export class SoundEngine {
     this.central = this._makeAudio('./assets/sound/central_market.mp3', true, 0.42);
     this.restaurant = this._makeAudio('./assets/sound/market_restaurant.mp3', true, 0.34);
 
-    // Stage track + crowd cheer
+    // Stage tracks + crowd cheer
     this.diva = this._makeAudio('./assets/sound/diva.mp3', false, 0.62);
+    this.likeJennie = this._makeAudio('./assets/sound/like_jennie.mp3', false, 0.68);
+    this.activeTrack = this.diva;
     this.cheer = this._makeAudio('./assets/sound/cheer.wav', false, 0.50);
 
     this.speakerGain = null;
@@ -62,7 +64,7 @@ export class SoundEngine {
 
   setMuted(m) {
     this.muted = m;
-    for (const a of [this.rockstar, this.street, this.central, this.restaurant, this.diva, this.cheer]) {
+    for (const a of [this.rockstar, this.street, this.central, this.restaurant, this.diva, this.likeJennie, this.cheer]) {
       a.muted = m;
     }
   }
@@ -101,23 +103,26 @@ export class SoundEngine {
     }
   }
 
-  prepareStage() {
+  prepareStage(venue = 'lisa') {
     this.unlock();
     this.stopCity();
     this.diva.pause();
-    try { this.diva.currentTime = 0; } catch {}
+    this.likeJennie.pause();
+    this.activeTrack = venue === 'jennie' ? this.likeJennie : this.diva;
+    try { this.activeTrack.currentTime = 0; } catch {}
     this.stagePlaying = false;
   }
 
   playStage() {
     this.unlock();
-    this.diva.muted = this.muted;
-    this.diva.play().catch(() => {});
+    this.activeTrack.muted = this.muted;
+    this.activeTrack.play().catch(() => {});
     this.stagePlaying = true;
   }
 
   stopStage() {
     this.diva.pause();
+    this.likeJennie.pause();
     this.stagePlaying = false;
   }
 
@@ -130,10 +135,10 @@ export class SoundEngine {
   }
 
   get trackTime() {
-    return this.diva.currentTime || 0;
+    return this.activeTrack.currentTime || 0;
   }
 
   get trackPlaying() {
-    return this.stagePlaying && !this.diva.paused && !this.diva.ended;
+    return this.stagePlaying && !this.activeTrack.paused && !this.activeTrack.ended;
   }
 }

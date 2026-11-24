@@ -12,7 +12,6 @@ function rrect(ctx, x, y, w, h, r) {
 
 function drawStar(ctx, x, y, r, color, alpha = 1) {
   const w = r * 0.34;
-  ctx.save();
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
   ctx.fillStyle = color;
   ctx.beginPath();
@@ -26,7 +25,6 @@ function drawStar(ctx, x, y, r, color, alpha = 1) {
   ctx.lineTo(x - w, y - w);
   ctx.closePath();
   ctx.fill();
-  ctx.restore();
 }
 
 export class GameHUD {
@@ -35,6 +33,7 @@ export class GameHUD {
     this.ctx = canvas.getContext('2d');
     this.game = game;
     this.buttons = [];
+    this.showStreetOptions = false;
     this.laneTargets = [null, null, null, null];
     this.stickCenter = { x: 82, y: 600 };
     this.stickId = -1;
@@ -72,7 +71,8 @@ export class GameHUD {
     const hitButton = (x, y) => {
       for (const b of this.buttons) {
         if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) {
-          this.game.handleAction(b.id);
+          if (b.id === 'street_options') this.showStreetOptions = !this.showStreetOptions;
+          else this.game.handleAction(b.id);
           return true;
         }
       }
@@ -189,7 +189,7 @@ export class GameHUD {
   }
 
   draw(delta) {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     if (this.canvas.width !== Math.round(vw * dpr) || this.canvas.height !== Math.round(vh * dpr)) {
@@ -255,9 +255,16 @@ export class GameHUD {
 
     ctx.fillStyle = '#e7d5e6';
     ctx.font = '500 16px -apple-system, system-ui, sans-serif';
-    ctx.fillText('Find your stage in Yaowarat.', x + 2, foot - 68);
-    this._btn('play', 'ENTER BANGKOK', x, foot - 48, 196, 48, true);
-    this._btn('song', 'PLAY SONG', x + 206, foot - 48, 130, 48);
+    ctx.fillText('Find LISA or JENNIE live in Yaowarat.', x + 2, foot - 68);
+    if (portrait) {
+      this._btn('play', 'ENTER BANGKOK', x, foot - 48, 178, 48, true);
+      this._btn('song', 'LISA', x + 186, foot - 48, 72, 48);
+      this._btn('jennie_song', 'JENNIE', x + 264, foot - 48, 84, 48);
+    } else {
+      this._btn('play', 'ENTER BANGKOK', x, foot - 48, 196, 48, true);
+      this._btn('song', 'PLAY LISA', x + 206, foot - 48, 118, 48);
+      this._btn('jennie_song', 'PLAY JENNIE', x + 334, foot - 48, 134, 48);
+    }
   }
 
   _drawExplore(vw, vh, safe, portrait) {
@@ -267,22 +274,27 @@ export class GameHUD {
     const tlx = safe.left + m;
     const tly = safe.top + 12;
 
-    this._panel(tlx, tly, 186, 76, 12);
+    this._panel(tlx, tly, 170, 52, 10);
     ctx.textAlign = 'left';
     ctx.fillStyle = PINK;
     ctx.font = '700 11px -apple-system, system-ui, sans-serif';
-    ctx.fillText(g.areaName, tlx + 12, tly + 22);
+    ctx.fillText(g.areaName, tlx + 10, tly + 19, 150);
     ctx.fillStyle = IVORY;
-    ctx.font = '700 15px -apple-system, system-ui, sans-serif';
-    ctx.fillText('Diva Soundstage', tlx + 12, tly + 44);
-    ctx.fillStyle = MUTED;
-    ctx.font = '500 12px -apple-system, system-ui, sans-serif';
-    ctx.fillText(g.near ? 'Stage entrance ready!' : `${Math.ceil(g.distance)} m north`, tlx + 12, tly + 64);
+    ctx.font = '600 12px -apple-system, system-ui, sans-serif';
+    const vLabel = g.nearVenue === 'jennie' ? 'JENNIE' : 'LISA';
+    const distance = g.near ? `${vLabel} entrance ready` : `${vLabel} stage · ${Math.ceil(g.distance)} m`;
+    ctx.fillText(distance, tlx + 10, tly + 39, 150);
 
-    this._btn('sound', g.sound.muted ? 'SOUND OFF' : 'SOUND ON', vw - safe.right - m - 102, tly, 102, 42);
-    this._btn('song_len', g.fullSong ? 'FULL SONG · 3:04' : 'QUICK TAKE · 0:21', vw - safe.right - m - 148, tly + 48, 148, 38);
-    this._btn('difficulty', `LEVEL · ${g.difficulty.toUpperCase()}`, vw - safe.right - m - 148, tly + 92, 148, 36);
-    this._btn('watch_only', g.watchOnly ? 'WATCH ONLY · ON' : 'WATCH SHOW', vw - safe.right - m - 148, tly + 134, 148, 36, g.watchOnly);
+    const rx = vw - safe.right - m;
+    this._btn('street_options', this.showStreetOptions ? 'CLOSE' : 'SHOW OPTIONS', rx - 112, tly, 112, 42);
+    if (this.showStreetOptions) {
+      this._btn('sound', g.sound.muted ? 'SOUND OFF' : 'SOUND ON', rx - 148, tly + 48, 148, 42);
+      this._btn('song_len', g.fullSong ? 'FULL SONG · 3:02' : 'QUICK TAKE · 0:21', rx - 148, tly + 96, 148, 42);
+      this._btn('difficulty', `LEVEL · ${g.difficulty.toUpperCase()}`, rx - 148, tly + 144, 148, 42);
+      this._btn('watch_only', 'WATCH LISA', rx - 148, tly + 192, 148, 42, g.watchOnly && g.activeVenue === 'lisa');
+      this._btn('jennie_song', 'PLAY JENNIE', rx - 148, tly + 240, 148, 42);
+      this._btn('watch_jennie', 'WATCH JENNIE', rx - 148, tly + 288, 148, 42, g.watchOnly && g.activeVenue === 'jennie');
+    }
 
     // Virtual Thumbstick
     const bottom = vh - safe.bottom - m;
@@ -309,7 +321,8 @@ export class GameHUD {
     ctx.restore();
 
     if (g.near) {
-      this._btn('play', 'START SHOW', vw - safe.right - m - 156, bottom - 54, 156, 50, true);
+      const lbl = g.nearVenue === 'jennie' ? 'ENTER JENNIE' : 'ENTER LISA';
+      this._btn('play', lbl, vw - safe.right - m - 156, bottom - 54, 156, 50, true);
     }
   }
 
@@ -328,8 +341,9 @@ export class GameHUD {
     ctx.font = '700 11px -apple-system, system-ui, sans-serif';
     ctx.fillText(`● REC · ${g.sectionName}`, tlx + 12, tly + 20);
     ctx.fillStyle = IVORY;
-    ctx.font = '800 22px -apple-system, system-ui, sans-serif';
-    ctx.fillText(g.watchOnly ? 'LIVE SHOW' : 'DIVA', tlx + 12, tly + 46);
+    ctx.font = '800 20px -apple-system, system-ui, sans-serif';
+    const showTitle = g.activeVenue === 'jennie' ? 'LIKE JENNIE' : 'DIVA';
+    ctx.fillText(g.watchOnly ? `${showTitle} LIVE` : showTitle, tlx + 12, tly + 46, 134);
 
     if (!g.watchOnly) {
       this._panel(rx - 138, tly, 138, 66, 10);
@@ -364,14 +378,18 @@ export class GameHUD {
     }
 
     // Transparent Rounded Magic-Piano Touch Points + Glowing Starlight Hit Line + Sparkles!
-    // Raised a smidge higher off the bottom edge for comfortable thumb tapping & holding!
+    // Raised into the comfortable thumb zone with a subtle ergonomic thumb-arc stagger.
     const width = Math.min(vw - safe.left - safe.right - m * 2, 420);
     const gap = 10;
     const spacing = (width + gap) / 4;
     const x0 = (vw - width) * 0.5;
-    const radius = portrait ? 36 : 30;
-    const bottom = vh - safe.bottom - (portrait ? 56 : 30);
+    const radius = Math.min(portrait ? 42 : 35, (spacing - 6) * 0.5);
+    const bottom = vh - safe.bottom - (portrait ? 94 : 46);
     const lineY = bottom - radius;
+    const arc = portrait ? 6 : 4;
+    const laneOffset = [arc, -arc, -arc, arc];
+    const laneY = (lane) => lineY + laneOffset[lane];
+    const arcY = (u) => lineY + arc * (1 - 2 * Math.sin(u * Math.PI));
     const railH = Math.min(portrait ? 168 : 112, vh * 0.28);
     const railTop = lineY - railH;
     const lookahead = 1.52;
@@ -384,26 +402,38 @@ export class GameHUD {
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, railTop - 10, vw, vh - railTop + 10);
 
-    // Glowing Magic-Piano horizon line + twinkling starlight glints
+    // Glowing Magic-Piano horizon curve + twinkling starlight glints
+    const traceHorizon = () => {
+      ctx.beginPath();
+      for (let i = 0; i <= 24; i++) {
+        const u = i / 24;
+        const px = x0 + 6 + (width - 12) * u;
+        const py = arcY(u);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+    };
     ctx.save();
     ctx.strokeStyle = 'rgba(255, 114, 188, 0.24)';
     ctx.lineWidth = 7;
-    ctx.beginPath(); ctx.moveTo(x0 + 6, lineY); ctx.lineTo(x0 + width - 6, lineY); ctx.stroke();
+    traceHorizon();
+    ctx.stroke();
     ctx.strokeStyle = 'rgba(255, 232, 246, 0.68)';
     ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(x0 + 6, lineY); ctx.lineTo(x0 + width - 6, lineY); ctx.stroke();
+    traceHorizon();
+    ctx.stroke();
     ctx.restore();
 
     for (let s = 0; s < 9; s++) {
       const u = (s + 0.5) / 9;
       const tw = 0.25 + 0.75 * Math.pow(0.5 + 0.5 * Math.sin(tNow * (3.2 + (s % 3) * 1.1) + s * 1.7), 3);
-      drawStar(ctx, x0 + 6 + (width - 12) * u, lineY + Math.sin(tNow * 2.0 + s) * 2.4, 2.4 + tw * 2.6, '#fff8fc', tw * 0.78);
+      drawStar(ctx, x0 + 6 + (width - 12) * u, arcY(u) + Math.sin(tNow * 2.0 + s) * 2.4, 2.4 + tw * 2.6, '#fff8fc', tw * 0.78);
     }
 
     // 4 Transparent Rounded Circular Touch Points
     for (let lane = 0; lane < 4; lane++) {
       const cx = x0 + lane * spacing + (spacing - gap) * 0.5;
-      const cy = lineY;
+      const cy = laneY(lane);
       const ink = JEWEL[lane];
       let touched = false;
       for (const l of this.laneTouches.values()) if (l === lane) touched = true;
@@ -442,6 +472,7 @@ export class GameHUD {
 
       const coreR = 4.6 + glow * 3.6 + Math.sin(tNow * 4.0 + lane * 1.4) * 0.8;
       drawStar(ctx, cx, cy, coreR, '#fff4fb', 0.58 + glow * 0.42);
+      ctx.globalAlpha = 1;
       // Whole lane column (rail to screen bottom) is the touch zone, so any finger-sized tap lands.
       this.laneTargets[lane] = { x: x0 + lane * spacing - gap * 0.5, y: railTop, w: spacing, h: vh - railTop };
     }
@@ -456,15 +487,16 @@ export class GameHUD {
       const lane = note.lane;
       const ink = JEWEL[lane];
       const cx = x0 + lane * spacing + (spacing - gap) * 0.5;
+      const hitY = laneY(lane);
       const headU = note.holding ? 0 : Math.max(0, Math.min(1, headRemain / lookahead));
-      const cy = lineY - headU * railH;
+      const cy = hitY - headU * railH;
       const fade = Math.max(0, Math.min(1, (lookahead - headRemain) * 5.5));
-      const orbR = portrait ? 18 : 15;
+      const orbR = portrait ? 20 : 16;
 
       // Translucent glowing Hold Ribbon for Press-and-Hold beats!
       if (holdDur > 0) {
         const tailU = Math.max(0, Math.min(1, tailRemain / lookahead));
-        const tailY = lineY - tailU * railH;
+        const tailY = hitY - tailU * railH;
         const barW = portrait ? 18 : 14;
         if (cy - tailY > 4) {
           ctx.save();
@@ -505,53 +537,59 @@ export class GameHUD {
 
       drawStar(ctx, cx, cy, note.holding ? 9.5 : 6.2, '#ffffff', fade * 0.95);
     }
+    ctx.globalAlpha = 1;
 
     // 360-degree Starlight Sparkle Bursts on Hit!
     for (let lane = 0; lane < 4; lane++) {
       const sp = g.flash[lane];
       if (sp > 0.08) {
         const cx = x0 + lane * spacing + (spacing - gap) * 0.5;
+        const hitY = laneY(lane);
         const p = 1 - sp;
         ctx.save();
         ctx.globalAlpha = sp * 0.72;
         ctx.strokeStyle = JEWEL[lane];
         ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.arc(cx, lineY, 24 + p * 34, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, hitY, 26 + p * 34, 0, Math.PI * 2); ctx.stroke();
         ctx.globalAlpha = sp * 0.65;
         ctx.strokeStyle = '#fff6fc';
         ctx.lineWidth = 1.1;
-        ctx.beginPath(); ctx.arc(cx, lineY, 16 + p * 22, 0, Math.PI * 2); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx, hitY, 18 + p * 22, 0, Math.PI * 2); ctx.stroke();
         ctx.restore();
         for (let i = 0; i < 10; i++) {
           const ang = (i / 10) * Math.PI * 2 + p * 0.45;
           const dist = 18 + (i % 3) * 8 + p * 38;
           const sr = sp * (3.2 + (i % 3) * 1.4);
           if (sr > 0.8) {
-            drawStar(ctx, cx + Math.cos(ang) * dist, lineY + Math.sin(ang) * dist, sr, i % 2 === 0 ? '#fff8fc' : JEWEL[lane], sp);
+            drawStar(ctx, cx + Math.cos(ang) * dist, hitY + Math.sin(ang) * dist, sr, i % 2 === 0 ? '#fff8fc' : JEWEL[lane], sp);
           }
         }
       }
     }
 
-    // Glitter bursts: translucent stars that explode outward and drift down
+    // Glitter bursts: translucent stars that explode outward and drift down (capped for locked 60 FPS!)
     for (const ev of g.burstQueue.splice(0)) {
       const big = ev.kind === 'combo';
-      const n = big ? 46 : ev.kind === 'perfect' ? 24 : 12;
+      const n = big ? 24 : ev.kind === 'perfect' ? 12 : 7;
       for (let i = 0; i < n; i++) {
         const ang = Math.random() * Math.PI * 2;
         const spd = (big ? 160 : 90) + Math.random() * (big ? 320 : 220);
         const ox = big ? x0 + Math.random() * width : x0 + ev.lane * spacing + (spacing - gap) * 0.5;
+        const oy = big ? lineY : laneY(ev.lane);
         this.glitter.push({
-          x: ox, y: lineY, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 90,
-          r: 2.5 + Math.random() * (big ? 6 : 4.5), life: 0.8 + Math.random() * 0.7, age: 0,
+          x: ox, y: oy, vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd - 90,
+          r: 3.0 + Math.random() * (big ? 6.5 : 4.8), life: 0.65 + Math.random() * 0.5, age: 0,
           color: Math.random() < 0.45 ? '#fff8fc' : JEWEL[big ? Math.floor(Math.random() * 4) : ev.lane],
         });
       }
     }
-    if (this.glitter.length > 400) this.glitter.splice(0, this.glitter.length - 400);
-    this.glitter = this.glitter.filter((p) => p.age < p.life);
-    for (const p of this.glitter) {
+    if (this.glitter.length > 90) this.glitter.splice(0, this.glitter.length - 90);
+    let write = 0;
+    for (let i = 0; i < this.glitter.length; i++) {
+      const p = this.glitter[i];
       p.age += this._dt;
+      if (p.age >= p.life) continue;
+      this.glitter[write++] = p;
       p.vy += 260 * this._dt;
       p.vx *= 0.985;
       p.x += p.vx * this._dt;
@@ -559,6 +597,8 @@ export class GameHUD {
       const k = 1 - p.age / p.life;
       drawStar(ctx, p.x, p.y, p.r * (0.5 + k * 0.7), p.color, k * (0.55 + 0.45 * Math.abs(Math.sin(p.age * 22 + p.x))));
     }
+    this.glitter.length = write;
+    ctx.globalAlpha = 1;
 
     // Countdown or PERFECT/GOOD badge
     if (g.count > 0) {
@@ -577,10 +617,11 @@ export class GameHUD {
 
     // Thin song progress bar
     const prog = Math.max(0, Math.min(1, g.takeTime / Math.max(1, g.takeEnd)));
+    const progY = bottom + arc + 14;
     ctx.fillStyle = 'rgba(255, 220, 240, 0.22)';
-    ctx.fillRect(x0, bottom + 8, width, 2);
+    ctx.fillRect(x0, progY, width, 2);
     ctx.fillStyle = PINK;
-    ctx.fillRect(x0, bottom + 8, width * prog, 2);
+    ctx.fillRect(x0, progY, width * prog, 2);
   }
 
   _drawResult(vw, vh, safe, portrait) {
