@@ -725,8 +725,9 @@ export async function buildJennieStage(loader, videoEl, onProgress) {
       jennieNode.updateMatrixWorld(true);
     }
 
-    // Tight K-pop unison on Choruses, Climax, Intro & Outro; independent freestyle/counter-choreo during Drop, Groove, Verse & Rap!
-    const inSync = (clipName === 'Jennie_Chorus' || clipName === 'Jennie_Climax' || clipName === 'Jennie_Intro' || clipName === 'Jennie_Outro');
+    // Match Jennie in tight K-pop unison most of the show (Intro, Drop 1, Chorus 1, Rap, Final Chorus, Outro);
+    // break into independent freestyle/counter-choreo during Bass Groove (36-54s) & Verse 1 (54-71s)!
+    const inSync = (clipName !== 'Jennie_Groove' && clipName !== 'Jennie_Verse');
     const spread = 1.0 + Math.max(0, intensity - 0.85) * 0.15;
 
     // 2. Update 6 Shirtless Male Backup Dancers

@@ -10,7 +10,7 @@ import { SoundEngine } from './audio.js?v=5';
 import { buildYaowaratStreet, STREET_SPAWN_Z, VENUE_POS, JENNIE_VENUE_POS } from './street.js?v=8';
 import { reflectInStreet } from './bangkok-night.js?v=8';
 import { buildDivaStage, PODIUM_CENTER } from './stage.js';
-import { buildJennieStage, JENNIE_CENTER } from './jennie-stage.js?v=9';
+import { buildJennieStage, JENNIE_CENTER } from './jennie-stage.js?v=10';
 import { GameHUD } from './hud.js?v=7';
 
 const BEAT = 60.0 / 93.96;
